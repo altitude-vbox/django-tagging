@@ -63,8 +63,32 @@ class TagManager(models.Manager):
             tag_name = tag_name.lower()
         tag, created = self.get_or_create(name=tag_name)
         ctype = ContentType.objects.get_for_model(obj)
-        TaggedItem._default_manager.get_or_create(
+        taggeditem, created = TaggedItem._default_manager.get_or_create(
             tag=tag, content_type=ctype, object_id=obj.pk)
+        return created
+
+    def remove_tag(self, obj, tag_name):
+        """
+        Removes the asssociation of a given object with a tag.
+        """
+        tag_names = parse_tag_input(tag_name)
+        if not len(tag_names):
+            raise AttributeError(_('No tags were given: "%s".') % tag_name)
+        if len(tag_names) > 1:
+            raise AttributeError(_('Multiple tags were given: "%s".') % tag_name)
+        tag_name = tag_names[0]
+        if settings.FORCE_LOWERCASE_TAGS:
+            tag_name = tag_name.lower()
+        tag, created = self.get_or_create(name=tag_name)
+        ctype = ContentType.objects.get_for_model(obj)
+
+        try:
+            taggeditem = TaggedItem._default_manager.get(
+                tag=tag, content_type=ctype, object_id=obj.pk)
+            taggeditem.delete()
+            return True
+        except TaggedItem.DoesNotExist:
+            return False
 
     def get_for_object(self, obj):
         """
